@@ -1,0 +1,8 @@
+# ignore folders 
+__pycache__/
+.vscode/
+benchmark/
+
+models/__pycache__/
+
+*.pyc
