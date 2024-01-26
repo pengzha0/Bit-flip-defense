@@ -66,7 +66,7 @@ parser.add_argument('--decay',
 parser.add_argument('--schedule',
                     type=int,
                     nargs='+',
-                    default=[80, 120],
+                    default=[40, 70],
                     help='Decrease learning rate at these epochs.')
 parser.add_argument(
     '--gammas',
@@ -162,9 +162,9 @@ params = [
     "--learning_rate","0.001",
     "--arch","resnet20_quan",
     "--optimizer","Adam",
-    '--epochs',"200",
+    '--epochs',"100",
 
-    "--save_path","/home/cmax/users/zp/Neural_Network_Weight_Attack-master/save/0002",
+    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/0002",
     "--test_batch_size","128",
     "--workers","8",
     "--ngpu","1",
@@ -611,26 +611,28 @@ def train(train_loader, model, criterion, optimizer, attacker, epoch, log):
         #######################################
         # 这里生成翻转的模型
         #######################################
-        model_flip = copy.deepcopy(model)
-        for m in model_flip.modules():
-            if isinstance(m, quan_Conv2d) or isinstance(m, quan_Linear):
-                if m.weight.grad is not None:
-                    m.weight.grad.data.zero_()
+        # model_flip = copy.deepcopy(model)
+        # for m in model_flip.modules():
+        #     if isinstance(m, quan_Conv2d) or isinstance(m, quan_Linear):
+        #         if m.weight.grad is not None:
+        #             m.weight.grad.data.zero_()
         
-        model_flip.eval()
-        for i_iter in range(1):
-            attacker.progressive_bit_search(model_flip, input, target)
+        # model_flip.eval()
+        # for i_iter in range(1):
+        #     attacker.progressive_bit_search(model_flip, input, target)
         
-        # compute output
+        # # compute output
+        # output = model(input)
+        # output_flip = model_flip(input)
+        
+        # lambd = 0.001
+        # loss_clean = criterion(output, target)
+        # loss_flip = lambd * torch.sum(abs(output - output_flip))/input.shape[0]
+        # loss = loss_clean + loss_flip
         output = model(input)
-        output_flip = model_flip(input)
-        
-        lambd = 0.001
-        loss_clean = criterion(output, target)
-        loss_flip = lambd * torch.sum(abs(output - output_flip))/input.shape[0]
-        loss = loss_clean + loss_flip
+        loss = criterion(output, target)
 
-        print_log(f"**********loss_clean::{loss_clean},  loss_flip::{loss_flip}**********",log)
+        # print_log(f"**********loss_clean::{loss_clean},  loss_flip::{loss_flip}**********",log)
         # measure accuracy and record loss
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
         
