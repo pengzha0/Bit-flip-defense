@@ -152,31 +152,33 @@ parser.add_argument(
     default=10,
     help='k weight with top ranking gradient used for bit-level gradient check.'
 )
+parser.add_argument('--checkpoint_path', type=str, 
+        help='checkpoint path for evaluate')
 
 params = [
     "--dataset","cifar10",
     # "--data_path","/mnt/f/data/cifar10",
     "--data_path","/home/cmax/users/zp/data/cifar10",
-    # '--checkpoint_path',"/home/zp/bit-flip-attack/BNN_BFA/save/UCMerced/model_best.pth.tar",
+    '--checkpoint_path',"/home/cmax/users/zp/Bit-flip-defense/save/0003/model_best.pth.tar",
 
     "--learning_rate","0.001",
     "--arch","resnet20_quan",
     "--optimizer","Adam",
     '--epochs',"200",
 
-    "--save_path","/home/zp/bit-flip-attack/BNN_BFA/save/UCMerced",
-    "--test_batch_size","64",
+    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/0003",
+    "--test_batch_size","128",
     "--workers","8",
-    "--ngpu","2",
+    "--ngpu","1",
     "--print_freq","50",
     # bfa
-    # "--reset_weight",
-
-    # "--bfa",
+    "--reset_weight",
+    '--manualSeed',"5678",
+    "--bfa",
     # "--evaluate",
-    "--n_iter","50",
-    "--k_top","1000",
-    "--attack_sample_size","64",
+    "--n_iter","20",
+    "--k_top","100",
+    "--attack_sample_size","128",
 ]
 args = parser.parse_args(params)
 ##########################################################################
@@ -425,6 +427,14 @@ def main():
         print_log(
             "=> do not use any checkpoint for {} model".format(args.arch), log)
 
+    if args.evaluate or args.enable_bfa:
+        checkpoint = torch.load(args.checkpoint_path)
+        net.load_state_dict(checkpoint['state_dict'],strict=True)
+        print("=> loaded checkpoint '{}' successfully".format(args.checkpoint_path))
+    else:
+        print_log(
+            "=> do not use any checkpoint for {} model".format(args.arch), log)
+        
     # update the step_size once the model is loaded. This is used for quantization.
     for m in net.modules():
         if isinstance(m, quan_Conv2d) or isinstance(m, quan_Linear):
@@ -785,7 +795,7 @@ def accuracy(output, target, topk=(1, )):
 
         res = []
         for k in topk:
-            correct_k = correct[:k].view(-1).float().sum(0)
+            correct_k = correct[:k].contiguous().view(-1).float().sum(0)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 

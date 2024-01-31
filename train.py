@@ -158,20 +158,21 @@ params = [
     # "--data_path","/mnt/f/data/cifar10",
     "--data_path","/home/cmax/users/zp/data/cifar10",
     # '--checkpoint_path',"/home/zp/bit-flip-attack/BNN_BFA/save/UCMerced/model_best.pth.tar",
+    # "--resume","/home/cmax/users/zp/Bit-flip-defense/save/0002/model_best.pth.tar",
 
     "--learning_rate","0.001",
     "--arch","resnet20_quan",
     "--optimizer","Adam",
     '--epochs',"100",
 
-    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/0002",
+    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/0004",
     "--test_batch_size","128",
     "--workers","8",
     "--ngpu","1",
     "--print_freq","50",
     # bfa
     # "--reset_weight",
-
+    '--manualSeed',"5678",
     # "--bfa",
     # "--evaluate",
     "--n_iter","50",
@@ -611,29 +612,32 @@ def train(train_loader, model, criterion, optimizer, attacker, epoch, log):
         #######################################
         # 这里生成翻转的模型
         #######################################
-        # model_flip = copy.deepcopy(model)
-        # for m in model_flip.modules():
-        #     if isinstance(m, quan_Conv2d) or isinstance(m, quan_Linear):
-        #         if m.weight.grad is not None:
-        #             m.weight.grad.data.zero_()
+        model_flip = copy.deepcopy(model)
+        for m in model_flip.modules():
+            if isinstance(m, quan_Conv2d) or isinstance(m, quan_Linear):
+                if m.weight.grad is not None:
+                    m.weight.grad.data.zero_()
         
-        # model_flip.eval()
-        # for i_iter in range(1):
-        #     attacker.progressive_bit_search(model_flip, input, target)
+        model_flip.eval()
+        for i_iter in range(1):
+            attacker.progressive_bit_search(model_flip, input, target)
         
-        # # compute output
-        # output = model(input)
-        # output_flip = model_flip(input)
-        
-        # lambd = 0.001
-        # loss_clean = criterion(output, target)
-        # loss_flip = lambd * torch.sum(abs(output - output_flip))/input.shape[0]
-        # loss = loss_clean + loss_flip
+        # compute output
         output = model(input)
-        loss = criterion(output, target)
+        output_flip = model_flip(input)
+        
+        lambd = 0.001
+        loss_clean = criterion(output, target)
+        loss_flip = torch.norm(output-output_flip,2)/torch.norm(output,2)*lambd
+        loss = loss_clean + loss_flip
+        hamming_dis = hamming_distance(model,model_flip)
 
-        # print_log(f"**********loss_clean::{loss_clean},  loss_flip::{loss_flip}**********",log)
+
+        print_log(f"**********loss_clean::{loss_clean},  loss_flip::{loss_flip}**********,  hamming::{hamming_dis}",log)
         # measure accuracy and record loss
+            
+        # output = model(input)
+        # loss = criterion(output, target)
         prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
         
         losses.update(loss.item(), input.size(0))
