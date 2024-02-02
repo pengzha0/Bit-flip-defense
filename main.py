@@ -159,14 +159,14 @@ params = [
     "--dataset","cifar10",
     # "--data_path","/mnt/f/data/cifar10",
     "--data_path","/home/cmax/users/zp/data/cifar10",
-    '--checkpoint_path',"/home/cmax/users/zp/Bit-flip-defense/save/0003/model_best.pth.tar",
+    '--checkpoint_path',"/home/cmax/users/zp/Bit-flip-defense/save/00017/model_best.pth.tar",
 
     "--learning_rate","0.001",
     "--arch","resnet20_quan",
     "--optimizer","Adam",
     '--epochs',"200",
 
-    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/0003",
+    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/00017",
     "--test_batch_size","128",
     "--workers","8",
     "--ngpu","1",
@@ -614,6 +614,8 @@ def perform_attack(attacker, model, model_clean, train_loader, test_loader,
 
         h_dist = hamming_distance(model, model_clean)
 
+        temp = torch.norm(model_clean(data)-model(data),2)/torch.norm(model_clean(data),2)
+        print(f"**************{temp}***********************")
         # record the loss
         losses.update(attacker.loss_max, data.size(0))
 

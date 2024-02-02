@@ -1,6 +1,6 @@
 import torch
 from models.quantization import quan_Conv2d, quan_Linear
-
+import copy
 
 def int2bin(input, num_bits):
     '''

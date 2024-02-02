@@ -152,20 +152,26 @@ parser.add_argument(
     default=10,
     help='k weight with top ranking gradient used for bit-level gradient check.'
 )
+parser.add_argument('--checkpoint_path', type=str, 
+        help='checkpoint path for evaluate')
+parser.add_argument('--lambd', type=float, 
+        help='checkpoint path for evaluate')
+parser.add_argument('--attack_num', type=int, 
+        help='checkpoint path for evaluate')
 
 params = [
     "--dataset","cifar10",
     # "--data_path","/mnt/f/data/cifar10",
     "--data_path","/home/cmax/users/zp/data/cifar10",
-    # '--checkpoint_path',"/home/zp/bit-flip-attack/BNN_BFA/save/UCMerced/model_best.pth.tar",
+    # '--checkpoint_path',"/home/cmax/users/zp/Bit-flip-defense/save/0002/model_best.pth.tar",
     # "--resume","/home/cmax/users/zp/Bit-flip-defense/save/0002/model_best.pth.tar",
 
     "--learning_rate","0.001",
     "--arch","resnet20_quan",
     "--optimizer","Adam",
     '--epochs',"100",
-
-    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/0004",
+    
+    # "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/0005",
     "--test_batch_size","128",
     "--workers","8",
     "--ngpu","1",
@@ -176,10 +182,10 @@ params = [
     # "--bfa",
     # "--evaluate",
     "--n_iter","50",
-    "--k_top","100",
+    "--k_top","80",
     "--attack_sample_size","128",
 ]
-args = parser.parse_args(params)
+args = parser.parse_args()
 ##########################################################################
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -597,8 +603,6 @@ def train(train_loader, model, criterion, optimizer, attacker, epoch, log):
 
     # switch to train mode
     model.train()
-    
-
 
     end = time.time()
     for i, (input, target) in enumerate(train_loader):
@@ -612,25 +616,32 @@ def train(train_loader, model, criterion, optimizer, attacker, epoch, log):
         #######################################
         # 这里生成翻转的模型
         #######################################
+        model_temp = copy.deepcopy(model)
+
+        for m in model_temp.modules():
+            if isinstance(m, quan_Conv2d) or isinstance(m, quan_Linear):
+                m.__reset_weight__()
+
         model_flip = copy.deepcopy(model)
+
         for m in model_flip.modules():
             if isinstance(m, quan_Conv2d) or isinstance(m, quan_Linear):
-                if m.weight.grad is not None:
-                    m.weight.grad.data.zero_()
-        
+                m.__reset_weight__()
+
         model_flip.eval()
-        for i_iter in range(1):
+        for i_iter in range(args.attack_num):
             attacker.progressive_bit_search(model_flip, input, target)
         
         # compute output
         output = model(input)
         output_flip = model_flip(input)
         
-        lambd = 0.001
+
         loss_clean = criterion(output, target)
-        loss_flip = torch.norm(output-output_flip,2)/torch.norm(output,2)*lambd
+        loss_flip = torch.norm(output-output_flip,2)/torch.norm(output,2)*args.lambd
         loss = loss_clean + loss_flip
-        hamming_dis = hamming_distance(model,model_flip)
+
+        hamming_dis = hamming_distance(model_temp,model_flip)
 
 
         print_log(f"**********loss_clean::{loss_clean},  loss_flip::{loss_flip}**********,  hamming::{hamming_dis}",log)

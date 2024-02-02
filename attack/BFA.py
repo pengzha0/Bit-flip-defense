@@ -54,6 +54,7 @@ class BFA(object):
             bit2flip[b_grad_max_idx] = 1
             bit2flip = bit2flip.view(b_grad_topk.size())
         else:
+            bit2flip = bit2flip.view(b_grad_topk.size())
             pass
 
 
