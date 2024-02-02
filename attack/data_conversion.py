@@ -45,8 +45,12 @@ def count_ones(t, n_bits):
         counter += ((t & 2**i) // 2**i).sum()
     return counter.item()
 
+def print_log(print_string, log):
+    print("{}".format(print_string))
+    log.write('{}\n'.format(print_string))
+    log.flush()
 
-def hamming_distance(model1, model2):
+def hamming_distance(model1, model2,log):
     '''
     Given two model whose structure, name and so on are identical.
     The only difference between the model1 and model2 are the weight.
@@ -57,14 +61,18 @@ def hamming_distance(model1, model2):
     # check the keys of state_dict match or not.
 
     H_dist = 0  # hamming distance counter
-
+    index = 1
     for name, module in model1.named_modules():
+        
         if isinstance(module, quan_Conv2d) or isinstance(module, quan_Linear):
             # remember to convert the tensor into integer for bitwise operations
             binW_model1 = int2bin(model1.state_dict()[name + '.weight'],
                                   module.N_bits).short()
             binW_model2 = int2bin(model2.state_dict()[name + '.weight'],
                                   module.N_bits).short()
-            H_dist += count_ones(binW_model1 ^ binW_model2, module.N_bits)
-
+            temp_dist= count_ones(binW_model1 ^ binW_model2, module.N_bits)
+            if(temp_dist>0):
+                print_log(f"******更改的位置是:: {index} 层, 数量为:: {temp_dist}***********",log)
+            H_dist +=temp_dist
+            index +=1
     return H_dist

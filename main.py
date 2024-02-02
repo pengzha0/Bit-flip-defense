@@ -155,18 +155,22 @@ parser.add_argument(
 parser.add_argument('--checkpoint_path', type=str, 
         help='checkpoint path for evaluate')
 
+parser.add_argument('--EAE',
+                    action='store_true',
+                    help='draw EAE figure')
+
 params = [
     "--dataset","cifar10",
     # "--data_path","/mnt/f/data/cifar10",
     "--data_path","/home/cmax/users/zp/data/cifar10",
-    '--checkpoint_path',"/home/cmax/users/zp/Bit-flip-defense/save/00017/model_best.pth.tar",
+    '--checkpoint_path',"/home/cmax/users/zp/Bit-flip-defense/save/00014/model_best.pth.tar",
 
     "--learning_rate","0.001",
     "--arch","resnet20_quan",
     "--optimizer","Adam",
     '--epochs',"200",
 
-    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/00017",
+    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/00014",
     "--test_batch_size","128",
     "--workers","8",
     "--ngpu","1",
@@ -176,7 +180,7 @@ params = [
     '--manualSeed',"5678",
     "--bfa",
     # "--evaluate",
-    "--n_iter","20",
+    "--n_iter","1",
     "--k_top","100",
     "--attack_sample_size","128",
 ]
@@ -427,7 +431,7 @@ def main():
         print_log(
             "=> do not use any checkpoint for {} model".format(args.arch), log)
 
-    if args.evaluate or args.enable_bfa:
+    if args.evaluate or args.enable_bfa or args.EAE:
         checkpoint = torch.load(args.checkpoint_path)
         net.load_state_dict(checkpoint['state_dict'],strict=True)
         print("=> loaded checkpoint '{}' successfully".format(args.checkpoint_path))
@@ -580,6 +584,7 @@ def perform_attack(attacker, model, model_clean, train_loader, test_loader,
     # Note that, attack has to be done in evaluation model due to batch-norm.
     # see: https://discuss.pytorch.org/t/what-does-model-eval-do-for-batchnorm-layer/7146
     model.eval()
+    model_clean.eval()
     losses = AverageMeter()
     iter_time = AverageMeter()
     attack_time = AverageMeter()
@@ -590,7 +595,7 @@ def perform_attack(attacker, model, model_clean, train_loader, test_loader,
             target = target.cuda()
             data = data.cuda()
         # Override the target to prevent label leaking
-        _, target = model(data).data.max(1)
+        _, target = model(data)[0].data.max(1)
         break
 
     # evaluate the test accuracy of clean model
@@ -604,6 +609,7 @@ def perform_attack(attacker, model, model_clean, train_loader, test_loader,
     print_log('k_top is set to {}'.format(args.k_top), log)
     print_log('Attack sample size is {}'.format(data.size()[0]), log)
     end = time.time()
+    
     for i_iter in range(N_iter):
         print_log('**********************************', log)
         attacker.progressive_bit_search(model, data, target)
@@ -612,9 +618,9 @@ def perform_attack(attacker, model, model_clean, train_loader, test_loader,
         attack_time.update(time.time() - end)
         end = time.time()
 
-        h_dist = hamming_distance(model, model_clean)
+        h_dist = hamming_distance(model, model_clean,log)
 
-        temp = torch.norm(model_clean(data)-model(data),2)/torch.norm(model_clean(data),2)
+        temp = torch.norm(model_clean(data)[0]-model(data)[0],2)/torch.norm(model_clean(data)[0],2)
         print(f"**************{temp}***********************")
         # record the loss
         losses.update(attacker.loss_max, data.size(0))
@@ -651,7 +657,7 @@ def perform_attack(attacker, model, model_clean, train_loader, test_loader,
             'iteration Time {iter_time.val:.3f} ({iter_time.avg:.3f})'.format(
                 iter_time=iter_time), log)
         end = time.time()
-
+    EAE_MAP(model_clean,model,test_loader,args.save_path)
     return
 
 
@@ -676,7 +682,7 @@ def train(train_loader, model, criterion, optimizer, epoch, log):
             input = input.cuda()
 
         # compute output
-        output = model(input)
+        output,_ = model(input)
         loss = criterion(output, target)
 
         # measure accuracy and record loss
@@ -731,7 +737,7 @@ def validate(val_loader, model, criterion, log):
                 input = input.cuda()
 
             # compute output
-            output = model(input)
+            output,_ = model(input)
             loss = criterion(output, target)
 
             # measure accuracy and record loss
@@ -820,6 +826,44 @@ def accuracy_logger(base_dir, epoch, train_accuracy, test_accuracy):
         accuracy_log.write(
             '{epoch}       {train}    {test}\n'.format(**recorder))
 
+def EAE_MAP(model_clean , model_flip, val_loader, save_path):
+    dis = []
+    # model_clean.eval()
+    # model_flip.eval()
+    with torch.no_grad():
+        for i, (input, target) in enumerate(val_loader):
+            if args.use_cuda:
+                target = target.cuda()
+                input = input.cuda()
+
+            _,act_clean = model_clean(input)
+            _,act_flip = model_flip(input)
+      
+            for i in range(len(act_clean)):
+                tem_dis = (torch.norm(act_clean[i] - act_flip[i],2)/torch.norm(act_clean[i],2)).item()
+                dis.append(tem_dis)
+            break
+    
+    x = range(1, len(dis)+1)
+    import matplotlib.pyplot as plt
+    # 绘制折线图
+    plt.plot(x, dis)
+
+    # 添加标题和坐标轴标签
+    plt.title('title')
+    plt.xlabel('x')
+    plt.ylabel('y')
+
+    # 显示网格线
+    plt.grid(True)
+    plt.xticks(x)
+
+    # 保存图形到指定路径
+    plt.savefig(save_path+"/EAE.png")
+
+    # 显示图形
+    plt.show()
+    
 
 if __name__ == '__main__':
     main()

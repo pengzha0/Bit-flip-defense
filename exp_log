@@ -7,7 +7,7 @@
 0007        89.6       20(13.96)     loss = mse + 0.01 * torch.norm(output-output_flip,2)/torch.norm
 0008        89.85      20(11.61)     loss = mse + 0.01 * torch.norm(output-output_flip,2)/torch(2bit攻击)
 0009       89.85       20(11.73)     4bit
-0010       90.24       20(14.61)     6bit
+00010       90.24       20(14.61)     6bit
 0011       89.77       20(11.71)     8bit
 00012      89.84       11(10.54)     10 bit
 00013      88.78       16(11.06)     12 bit

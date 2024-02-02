@@ -11,3 +11,7 @@ from .quan_mobilenet_imagenet import mobilenet_v2_quan
 from .vanilla_models.vanilla_mobilenet_imagenet import mobilenet_v2
 
 from .quan_resnet_cifar10 import resnet20_quan
+from .quan_resnet_cifar10_EAE_ import resnet20_quan_EAE
+
+
+

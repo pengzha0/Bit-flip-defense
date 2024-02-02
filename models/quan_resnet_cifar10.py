@@ -1,3 +1,4 @@
+### Error Amplification Effect
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,6 +7,9 @@ import math
 
 from .quantization import *
 
+__all__ = [
+    'resnet20_quan'
+]
 
 class DownsampleA(nn.Module):
     def __init__(self, nIn, nOut, stride):
@@ -51,13 +55,17 @@ class ResNetBasicblock(nn.Module):
         basicblock = self.bn_a(basicblock)
         basicblock = F.relu(basicblock, inplace=True)
 
+        act_out_list.append(basicblock)
+
         basicblock = self.conv_b(basicblock)
         basicblock = self.bn_b(basicblock)
 
         if self.downsample is not None:
             residual = self.downsample(x)
 
-        return F.relu(residual + basicblock, inplace=True)
+        basicblock = F.relu(residual + basicblock, inplace=True)
+        act_out_list.append(basicblock)
+        return basicblock
 
 
 class CifarResNet(nn.Module):
@@ -125,56 +133,26 @@ class CifarResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        global act_out_list
+        act_out_list = []
         x = self.conv_1_3x3(x)
+        act_out_list.append(x)
         x = F.relu(self.bn_1(x), inplace=True)
         x = self.stage_1(x)
         x = self.stage_2(x)
         x = self.stage_3(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
-        return self.classifier(x)
+        x = self.classifier(x)
+        act_out_list.append(x)
+        return x,act_out_list
 
-
+### Error Amplification Effect
 def resnet20_quan(num_classes=10):
     """Constructs a ResNet-20 model for CIFAR-10 (by default)
   Args:
     num_classes (uint): number of classes
   """
+
     model = CifarResNet(ResNetBasicblock, 20, num_classes)
-    return model
-
-
-def resnet32_quan(num_classes=10):
-    """Constructs a ResNet-32 model for CIFAR-10 (by default)
-  Args:
-    num_classes (uint): number of classes
-  """
-    model = CifarResNet(ResNetBasicblock, 32, num_classes)
-    return model
-
-
-def resnet44_quan(num_classes=10):
-    """Constructs a ResNet-44 model for CIFAR-10 (by default)
-  Args:
-    num_classes (uint): number of classes
-  """
-    model = CifarResNet(ResNetBasicblock, 44, num_classes)
-    return model
-
-
-def resnet56_quan(num_classes=10):
-    """Constructs a ResNet-56 model for CIFAR-10 (by default)
-  Args:
-    num_classes (uint): number of classes
-  """
-    model = CifarResNet(ResNetBasicblock, 56, num_classes)
-    return model
-
-
-def resnet110_quan(num_classes=10):
-    """Constructs a ResNet-110 model for CIFAR-10 (by default)
-  Args:
-    num_classes (uint): number of classes
-  """
-    model = CifarResNet(ResNetBasicblock, 110, num_classes)
     return model

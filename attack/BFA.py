@@ -82,7 +82,7 @@ class BFA(object):
         model.eval()
 
         # 1. perform the inference w.r.t given data and target
-        output = model(data)
+        output = model(data)[0]
         #         _, target = output.data.max(1)
         self.loss = self.criterion(output, target)
         # 2. zero out the grads first, then get the grads
@@ -107,7 +107,7 @@ class BFA(object):
                     attack_weight = self.flip_bit(module)
                     # change the weight to attacked weight and get loss
                     module.weight.data = attack_weight
-                    output = model(data)
+                    output = model(data)[0]
                     self.loss_dict[name] = self.criterion(output,
                                                           target).item()
                     # change the weight back to the clean weight
