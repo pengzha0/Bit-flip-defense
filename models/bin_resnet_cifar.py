@@ -1,16 +1,11 @@
-### Error Amplification Effect
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 import math
 
-from .quantization import *
+from .binarization import *
 
-
-__all__ = [
-    'resnet20_quan'
-]
 
 class DownsampleA(nn.Module):
     def __init__(self, nIn, nOut, stride):
@@ -55,7 +50,6 @@ class ResNetBasicblock(nn.Module):
         basicblock = self.conv_a(x)
         basicblock = self.bn_a(basicblock)
         basicblock = F.relu(basicblock, inplace=True)
-
         act_out_list.append(basicblock)
 
         basicblock = self.conv_b(basicblock)
@@ -137,7 +131,6 @@ class CifarResNet(nn.Module):
         global act_out_list
         act_out_list = []
         x = self.conv_1_3x3(x)
-        
         x = F.relu(self.bn_1(x), inplace=True)
         act_out_list.append(x)
         x = self.stage_1(x)
@@ -149,12 +142,11 @@ class CifarResNet(nn.Module):
         act_out_list.append(x)
         return x,act_out_list
 
-### Error Amplification Effect
-def resnet20_quan(num_classes=10):
+
+def resnet20_bin(num_classes=10):
     """Constructs a ResNet-20 model for CIFAR-10 (by default)
   Args:
     num_classes (uint): number of classes
   """
-
     model = CifarResNet(ResNetBasicblock, 20, num_classes)
     return model

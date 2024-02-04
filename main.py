@@ -7,10 +7,13 @@ import torch
 import torch.backends.cudnn as cudnn
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
+
 from utils import AverageMeter, RecorderMeter, time_string, convert_secs2time
 from tensorboardX import SummaryWriter
 import models
-from models.quantization import quan_Conv2d, quan_Linear, quantize
+# from models.quantization import quan_Conv2d, quan_Linear, quantize
+from models.binarization import quan_Conv2d, quan_Linear, quantize
+
 
 from attack.BFA import *
 import torch.nn.functional as F
@@ -66,7 +69,7 @@ parser.add_argument('--decay',
 parser.add_argument('--schedule',
                     type=int,
                     nargs='+',
-                    default=[80, 120],
+                    default=[40, 70],
                     help='Decrease learning rate at these epochs.')
 parser.add_argument(
     '--gammas',
@@ -163,14 +166,16 @@ params = [
     "--dataset","cifar10",
     # "--data_path","/mnt/f/data/cifar10",
     "--data_path","/home/cmax/users/zp/data/cifar10",
-    '--checkpoint_path',"/home/cmax/users/zp/Bit-flip-defense/save/00014/model_best.pth.tar",
+    '--checkpoint_path',"/home/cmax/users/zp/Bit-flip-defense/save/00020/model_best.pth.tar",
 
     "--learning_rate","0.001",
-    "--arch","resnet20_quan",
+    "--arch","resnet20_bin",
     "--optimizer","Adam",
-    '--epochs',"200",
+    '--epochs',"100",
+    '--manualSeed',"5678",
+    "--gpu_id","0",
 
-    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/00014",
+    "--save_path","/home/cmax/users/zp/Bit-flip-defense/save/00020",
     "--test_batch_size","128",
     "--workers","8",
     "--ngpu","1",
@@ -179,8 +184,8 @@ params = [
     "--reset_weight",
     '--manualSeed',"5678",
     "--bfa",
-    # "--evaluate",
-    "--n_iter","1",
+    "--evaluate",
+    "--n_iter","5",
     "--k_top","100",
     "--attack_sample_size","128",
 ]
@@ -550,12 +555,12 @@ def main():
         # ============ TensorBoard logging ============#
 
         ## Log the graidents distribution
-        for name, param in net.named_parameters():
-            name = name.replace('.', '/')
-            writer.add_histogram(name + '/grad',
-                                 param.grad.clone().cpu().data.numpy(),
-                                 epoch + 1,
-                                 bins='tensorflow')
+        # for name, param in net.named_parameters():
+        #     name = name.replace('.', '/')
+        #     writer.add_histogram(name + '/grad',
+        #                          param.grad.clone().cpu().data.numpy(),
+        #                          epoch + 1,
+        #                          bins='tensorflow')
 
         # ## Log the weight and bias distribution
         for name, module in net.named_modules():

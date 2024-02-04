@@ -1,5 +1,6 @@
 import torch
-from models.quantization import quan_Conv2d, quan_Linear, quantize
+# from models.quantization import quan_Conv2d, quan_Linear, quantize
+from models.binarization import quan_Conv2d, quan_Linear, quantize
 import operator
 from attack.data_conversion import *
 

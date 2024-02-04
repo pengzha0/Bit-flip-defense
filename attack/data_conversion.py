@@ -1,15 +1,20 @@
 import torch
-from models.quantization import quan_Conv2d, quan_Linear
+from models.binarization import quan_Conv2d, quan_Linear
+# from models.quantization import quan_Conv2d, quan_Linear, quantize
 import copy
 
 def int2bin(input, num_bits):
     '''
     convert the signed integer value into unsigned integer (2's complement equivalently).
+    Note that, the conversion is different depends on number of bit used.
     '''
     output = input.clone()
-    output[input.lt(0)] = 2**num_bits + output[input.lt(0)]
-    return output
+    if num_bits == 1: # when it is binary, the conversion is different
+        output = output/2 + .5
+    elif num_bits > 1:
+        output[input.lt(0)] = 2**num_bits + output[input.lt(0)]
 
+    return output
 
 def bin2int(input, num_bits):
     '''
@@ -17,8 +22,11 @@ def bin2int(input, num_bits):
     with the bitwise operations. Note that, in order to perform the bitwise operation, the input
     tensor has to be in the integer format.
     '''
-    mask = 2**(num_bits - 1) - 1
-    output = -(input & ~mask) + (input & mask)
+    if num_bits == 1:
+        output = input*2-1
+    elif num_bits > 1:
+        mask = 2**(num_bits - 1) - 1
+        output = -(input & ~mask) + (input & mask)
     return output
 
 
